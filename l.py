@@ -382,137 +382,306 @@ def execute_query(query_option):
     finally:
         conn.close()
 
+    # Function to save comment data to the database
+# Function to save comment data to the database
+def save_comment_data(comments):
+    conn = get_db_connection()
+    if not conn:
+        st.error("Failed to connect to the database.")
+        return False
+    
+    cursor = conn.cursor()
+    try:
+        for comment in comments:
+            video_id = comment['Video ID']
+            
+            # Check if the video_id exists in videoss
+            cursor.execute("SELECT video_id FROM videoss WHERE video_id = %s", (video_id,))
+            existing_video = cursor.fetchone()
+            
+            if existing_video:
+                sql = """
+                    INSERT INTO commentss (comment_id, video_id, author_name, published_at, top_level_comment)
+                    VALUES (%s, %s, %s, %s, %s)
+                """
+                values = (
+                    comment['Comment ID'],
+                    comment['Video ID'],
+                    comment['Author Name'],
+                    convert_to_mysql_datetime(comment['Published At']),
+                    comment['Top Level Comment']
+                )
+                cursor.execute(sql, values)
+                conn.commit()  # Commit after each comment insertion
+            else:
+                st.warning(f"Skipping comment for video ID {video_id}: Video not found in database.")
+        
+        st.success("All comment data saved successfully.")
+        return True
+        
+    except pymysql.MySQLError as e:
+        st.error(f"MySQL error occurred: {e}")
+        return False
+    
+    finally:
+        conn.close()
+
+
+def fetch_all_video_data():
+        conn = get_db_connection()
+        if not conn:
+            st.error("Failed to connect to the database.")
+            return None
+        
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT * FROM videoss")
+            rows = cursor.fetchall()
+            columns = [desc[0] for desc in cursor.description]
+            return pd.DataFrame(rows, columns=columns)
+        except pymysql.MySQLError as e:
+            st.error(f"MySQL error occurred: {e}")
+            return None
+        finally:
+            conn.close()
+            
+def save_comment_data(comments):
+    conn = get_db_connection()
+    if not conn:
+        st.error("Failed to connect to the database.")
+        return False
+    
+    cursor = conn.cursor()
+    try:
+        for comment in comments:
+            video_id = comment['Video ID']
+            
+            # Check if the video_id exists in videoss
+            cursor.execute("SELECT video_id FROM videoss WHERE video_id = %s", (video_id,))
+            existing_video = cursor.fetchone()
+            
+            if existing_video:
+                sql = """
+                    INSERT INTO commentss (comment_id, video_id, author_name, published_at, top_level_comment)
+                    VALUES (%s, %s, %s, %s, %s)
+                """
+                values = (
+                    comment['Comment ID'],
+                    comment['Video ID'],
+                    comment['Author Name'],
+                    convert_to_mysql_datetime(comment['Published At']),
+                    comment['Top Level Comment']
+                )
+                cursor.execute(sql, values)
+                conn.commit()  # Commit after each comment insertion
+            else:
+                st.warning(f"Skipping comment for video ID {video_id}: Video not found in database.")
+        
+        st.success("All comment data saved successfully.")
+        return True
+        
+    except pymysql.MySQLError as e:
+        st.error(f"MySQL error occurred: {e}")
+        return False
+    
+    finally:
+        conn.close()
+
+
+def fetch_all_comment_data():
+    conn = get_db_connection()
+    if not conn:
+        st.error("Failed to connect to the database.")
+        return None
+    
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM commentss")
+        rows = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description]
+        return pd.DataFrame(rows, columns=columns)
+    except pymysql.MySQLError as e:
+        st.error(f"MySQL error occurred: {e}")
+        return None
+    finally:
+        conn.close()
+def fetch_all_comment_data():
+    conn = get_db_connection()
+    if not conn:
+        st.error("Failed to connect to the database.")
+        return None
+    
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM commentss")
+        rows = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description]
+        return pd.DataFrame(rows, columns=columns)
+    except pymysql.MySQLError as e:
+        st.error(f"MySQL error occurred: {e}")
+        return None
+    finally:
+        conn.close()
+
+
+def main():
 # Streamlit UI
-st.title("YouTube Data Harvesting and Warehousing")
 
-# Sidebar for navigation
-st.sidebar.title("Navigation")
-options = ["HOME","Data Harvesting", "Data Warehousing", "Select and Execute SQL Queries"]
-choice = st.sidebar.radio("Go to", options)
+    st.sidebar.title("Navigation")
+    choice = st.sidebar.radio("Go to", ["HOME", "Data Harvesting", "Data Warehousing", "Select and Execute SQL Queries"])
 
-if choice == "HOME":
-    st.write("Welcome to the YouTube Data Harvesting and Warehousing app. Use the sidebar to navigate.")
+    if choice == "HOME":
+        #st.image("C:\Users\ashra\Downloads\youtube-6.svg", width=200)
 
-# Data Harvesting Page
-if choice == "Data Harvesting":
-    st.header("Data Harvesting")
-    channel_id = st.text_input("Enter YouTube Channel ID")
-    if st.button("Get Channel Data"):
-        if channel_id:
+        st.title("YouTube Data Harvesting and Warehousing using SQL and Streamlit")
+        st.subheader(":red[Domain:] Social Media")
+        st.subheader(":red[Overview:]")
+        st.markdown("""Build a simple dashboard or UI using Streamlit and
+        retrieve YouTube channel data with the help of the YouTube API.
+        Store the data in an SQL database (warehousing),
+        enable query in SQL and finally display in Streamlit""")
+        st.subheader(":red[Skill-take:]")
+        st.markdown("Python scripting, Data Collection, API integration, Data Management using SQL, Streamlit")
+        st.subheader(":red[Developed-by:] Ashrafi Benazir Begum")
+
+    # Data Harvesting Page
+    elif choice == "Data Harvesting":
+        st.header("Data Harvesting")
+        channel_id = st.text_input("Enter YouTube Channel ID")
+        if st.button("Get Channel Data"):
+            if channel_id:
+                channel_data = get_channel_data(channel_id)
+                if channel_data:
+                    st.subheader("Channel Data")
+                    st.image(channel_data["Channel Logo URL"])
+                    st.write("**Channel ID:**", channel_data["Channel ID"])
+                    st.write("**Channel Name:**", channel_data["Channel Name"])
+                    st.write("**Description:**", channel_data["Description"])
+                    st.write("**Published Date:**", channel_data["Published Date"])
+                    st.write("**Subscriber Count:**", channel_data["Subscriber Count"])
+                    st.write("**View Count:**", channel_data["View Count"])
+                    st.write("**Video Count:**", channel_data["Video Count"])
+            else:
+                st.warning("Please enter a valid YouTube Channel ID.")
+
+        # Fetch and display channel data
+        channel_data = fetch_all_channel_data()
+        #if channel_data is not None:
+        #   st.subheader("Stored Channel Data")
+        #  st.write(channel_data)
+
+        # Fetch channel IDs and names for selection
+        channel_ids_names = fetch_all_channel_ids_names()
+        #channel_options = {name: cid for cid, name in channel_ids_names}
+        #selected_channel_name = st.selectbox("Select a Channel", options=list(channel_options.keys()))
+
+        if st.button("Save Channel Data"):
+            #channel_id = channel_options[selected_channel_name]
             channel_data = get_channel_data(channel_id)
             if channel_data:
-                st.subheader("Channel Data")
-                st.image(channel_data["Channel Logo URL"])
-                st.write("**Channel ID:**", channel_data["Channel ID"])
-                st.write("**Channel Name:**", channel_data["Channel Name"])
-                st.write("**Description:**", channel_data["Description"])
-                st.write("**Published Date:**", channel_data["Published Date"])
-                st.write("**Subscriber Count:**", channel_data["Subscriber Count"])
-                st.write("**View Count:**", channel_data["View Count"])
-                st.write("**Video Count:**", channel_data["Video Count"])
+                conn = get_db_connection()
+                if conn:
+                    cursor = conn.cursor()
+                    try:
+                        sql = """
+                            INSERT INTO channell (channel_id, channel_name, description, published_date, subscriber_count, view_count, video_count)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """
+                        values = (
+                            channel_data["Channel ID"],
+                            channel_data["Channel Name"],
+                            channel_data["Description"],
+                            convert_to_mysql_datetime(channel_data["Published Date"]),
+                            channel_data["Subscriber Count"],
+                            channel_data["View Count"],
+                            channel_data["Video Count"]
+                        )
+                        cursor.execute(sql, values)
+                        conn.commit()
+                        st.success("Channel data saved successfully.")
+                    except pymysql.IntegrityError:
+                        st.info("Channel data already uploaded.")
+                    except pymysql.MySQLError as e:
+                        st.error(f"MySQL error occurred: {e}")
+                    finally:
+                        conn.close()
+
+    # Data Warehousing Page
+    elif choice == "Data Warehousing":
+        st.header("Data Warehousing")
+
+        if create_tables():
+            st.success("Tables created successfully or already exist.")
+
+        # Fetch and display channel data
+        channel_data = fetch_all_channel_data()
+        if channel_data is not None:
+            st.subheader("Stored Channel Data")
+            st.write(channel_data)
+
+        # Fetch channel IDs and names for selection
+        channel_ids_names = fetch_all_channel_ids_names()
+        channel_options = {name: cid for cid, name in channel_ids_names}
+        selected_channel_name = st.selectbox("Select a Channel", options=list(channel_options.keys()))
+
+        if st.button("Save Video Data"):
+            channel_id = channel_options[selected_channel_name]
+            videos = get_video_data(channel_id)
+            if videos and save_video_data(videos):
+                st.success("Video data saved successfully.")
+
+            video_data = fetch_all_video_data()
+            if video_data is not None:
+                st.subheader("Stored Video Data")
+                st.write(video_data)
+        #else:
+            #st.error("Failed to save video data.")
+
+        if st.button("Save Comment Data"):
+            channel_id = channel_options[selected_channel_name]
+            videos = get_video_data(channel_id)
+            if videos:
+                all_comments_saved = True
+                for video in videos:
+                    comments = get_comment_data(video['Video ID'])
+                    if comments and not save_comment_data(comments):
+                        all_comments_saved = False
+                if all_comments_saved:
+                    st.success("All comment data saved successfully.")
+
+                     # Fetch and display comment data after saving
+                #comment_data = fetch_all_comment_data()
+                df_comments = fetch_all_comment_data()
+                if df_comments is not None and not df_comments.empty:
+                    st.dataframe(df_comments)
         else:
-            st.warning("Please enter a valid YouTube Channel ID.")
+            st.warning("No comment data found.")
+                
 
-    # Fetch and display channel data
-    channel_data = fetch_all_channel_data()
-    #if channel_data is not None:
-     #   st.subheader("Stored Channel Data")
-      #  st.write(channel_data)
+    # Select and Execute SQL Queries Page
+    elif choice == "Select and Execute SQL Queries":
+        st.header("Select and Execute SQL Queries")
 
-    # Fetch channel IDs and names for selection
-    channel_ids_names = fetch_all_channel_ids_names()
-    #channel_options = {name: cid for cid, name in channel_ids_names}
-    #selected_channel_name = st.selectbox("Select a Channel", options=list(channel_options.keys()))
-
-    if st.button("Save Channel Data"):
-        #channel_id = channel_options[selected_channel_name]
-        channel_data = get_channel_data(channel_id)
-        if channel_data:
-            conn = get_db_connection()
-            if conn:
-                cursor = conn.cursor()
-                try:
-                    sql = """
-                        INSERT INTO channell (channel_id, channel_name, description, published_date, subscriber_count, view_count, video_count)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """
-                    values = (
-                        channel_data["Channel ID"],
-                        channel_data["Channel Name"],
-                        channel_data["Description"],
-                        convert_to_mysql_datetime(channel_data["Published Date"]),
-                        channel_data["Subscriber Count"],
-                        channel_data["View Count"],
-                        channel_data["Video Count"]
-                    )
-                    cursor.execute(sql, values)
-                    conn.commit()
-                    st.success("Channel data saved successfully.")
-                except pymysql.IntegrityError:
-                    st.info("Channel data already uploaded.")
-                except pymysql.MySQLError as e:
-                    st.error(f"MySQL error occurred: {e}")
-                finally:
-                    conn.close()
-
-# Data Warehousing Page
-elif choice == "Data Warehousing":
-    st.header("Data Warehousing")
-
-    if create_tables():
-        st.success("Tables created successfully or already exist.")
-
-    # Fetch and display channel data
-    channel_data = fetch_all_channel_data()
-    if channel_data is not None:
-        st.subheader("Stored Channel Data")
-        st.write(channel_data)
-
-    # Fetch channel IDs and names for selection
-    channel_ids_names = fetch_all_channel_ids_names()
-    channel_options = {name: cid for cid, name in channel_ids_names}
-    selected_channel_name = st.selectbox("Select a Channel", options=list(channel_options.keys()))
-
-    if st.button("Save Video Data"):
-        channel_id = channel_options[selected_channel_name]
-        videos = get_video_data(channel_id)
-        if videos and save_video_data(videos):
-            st.success("Video data saved successfully.")
-
-    if st.button("Save Comment Data"):
-        channel_id = channel_options[selected_channel_name]
-        videos = get_video_data(channel_id)
-        if videos:
-            all_comments_saved = True
-            for video in videos:
-                comments = get_comment_data(video['Video ID'])
-                if comments and not save_comment_data(comments):
-                    all_comments_saved = False
-            if all_comments_saved:
-                st.success("All comment data saved successfully.")
-            else:
-                st.error("Some comment data could not be saved.")
-
-# Select and Execute SQL Queries Page
-elif choice == "Select and Execute SQL Queries":
-    st.header("Select and Execute SQL Queries")
-
-    query_options = [
-        "Names of all videos and their corresponding channels",
-        "Top 10 most viewed videos and their respective channels",
-        "Number of comments on each video",
-        "Names of all channels and their respective count of videos, views, likes, and comments",
-        "Videos with the highest number of likes",
-        "Videos with the highest number of comments",
-        "Total number of videos for each channel",
-        "Channels with the highest number of videos"
-    ]
-    
-    query_option = st.selectbox("Select a query to execute", query_options)
-    if st.button("Execute Query"):
-        query_results = execute_query(query_option)
-        if query_results is not None:
-            st.subheader("Query Results")
-            st.write(query_results)
+        query_options = [
+            "Names of all videos and their corresponding channels",
+            "Top 10 most viewed videos and their respective channels",
+            "Number of comments on each video",
+            "Names of all channels and their respective count of videos, views, likes, and comments",
+            "Videos with the highest number of likes",
+            "Videos with the highest number of comments",
+            "Total number of videos for each channel",
+            "Channels with the highest number of videos"
+        ]
+        
+        query_option = st.selectbox("Select a query to execute", query_options)
+        if st.button("Execute Query"):
+            query_results = execute_query(query_option)
+            if query_results is not None:
+                st.subheader("Query Results")
+                st.write(query_results)
 
 
+
+if __name__ == "__main__":
+    create_tables()
+    main()
